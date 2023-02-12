@@ -50,7 +50,7 @@ export default function Home() {
       const username = usernameElm.value;
 
       if (type === "Mastodon") {
-        const res = await fetch(
+        const res = await fetchWithRetry(
           `https://${instance}/api/v1/accounts/verify_credentials`,
           {
             headers: {
@@ -72,7 +72,7 @@ export default function Home() {
       }
 
       if (type === "Misskey") {
-        const res = await fetch(`https://${instance}/api/users/show`, {
+        const res = await fetchWithRetry(`https://${instance}/api/users/show`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -101,7 +101,7 @@ export default function Home() {
 
       for (const session of sessions) {
         if (session.type === "Mastodon") {
-          fetch(`https://${session.instance}/api/v1/statuses`, {
+          fetchWithRetry(`https://${session.instance}/api/v1/statuses`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -118,7 +118,7 @@ export default function Home() {
         }
 
         if (session.type === "Misskey") {
-          fetch(`https://${session.instance}/api/notes/create`, {
+          fetchWithRetry(`https://${session.instance}/api/notes/create`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -164,7 +164,7 @@ export default function Home() {
         const userInfoList = [];
         for (const session of sessions) {
           if (session.type === "Mastodon") {
-            const res = await fetch(
+            const res = await fetchWithRetry(
               `https://${session.instance}/api/v1/accounts/${session.id}`,
               {
                 headers: {
@@ -184,7 +184,7 @@ export default function Home() {
           }
 
           if (session.type === "Misskey") {
-            const res = await fetch(
+            const res = await fetchWithRetry(
               `https://${session.instance}/api/users/show`,
               {
                 method: "POST",
@@ -339,3 +339,23 @@ export default function Home() {
     </>
   );
 }
+
+const fetchWithRetry = async (
+  url: string,
+  parameter: object,
+  retry: number = 3
+) => {
+  const sleep = (msec: number) =>
+    new Promise((resolve) => setTimeout(resolve, msec));
+
+  for (let i = -1; i < retry; i++) {
+    try {
+      return await fetch(url, parameter);
+    } catch (err) {
+      console.log(err);
+      await sleep(1000);
+    }
+  }
+
+  throw new Error("retry count exceeded!");
+};
